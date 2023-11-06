@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StorageManagerTest {
-    private static final Path storagePath = resourcesPath.resolve("storage");
+    private static final Path storagePath = resourcesPath;
     private static final int metaEntrySize = 15;
 
     @Test

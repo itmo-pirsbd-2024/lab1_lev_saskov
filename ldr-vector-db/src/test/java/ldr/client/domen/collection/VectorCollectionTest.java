@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VectorCollectionTest {
-    private static final Path indexFolder = resourcesPath.resolve("collection");
+    private static final Path indexFolder = resourcesPath;
 
     @Test
     public void testAddAndSearch() throws IOException {

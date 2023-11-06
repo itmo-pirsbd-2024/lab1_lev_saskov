@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class FastIndexTest {
-    private static final Path indexFolder = resourcesPath.resolve("index");
+    private static final Path indexFolder = resourcesPath;
 
     @Test
     public void testNearest() throws IOException {

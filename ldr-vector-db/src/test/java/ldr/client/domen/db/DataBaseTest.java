@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DataBaseTest {
-    private static final Path databasePath = resourcesPath.resolve("database");
+    private static final Path databasePath = resourcesPath;
     private static final String COLLECTION_NAME_PREFIX = "coll";
     private static final int START_VECTOR_LEN = 10;
 

@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class HardDriveEmbeddingsTest {
-    private static final Path drivePath = resourcesPath.resolve("drive");
+    private static final Path drivePath = resourcesPath;
 
     @Test
     public void testLoading() throws IOException {
