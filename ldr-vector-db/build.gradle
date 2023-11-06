@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
 }
 
-group 'ldt.vector-db'
+group 'ldr.vector-db'
 version '1.0.0'
 
 repositories {
