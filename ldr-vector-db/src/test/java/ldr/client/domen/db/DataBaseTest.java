@@ -3,6 +3,7 @@ package ldr.client.domen.db;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 
@@ -27,6 +28,14 @@ class DataBaseTest {
     @Test
     public void testCreateCollection() throws IOException {
         Path location = Files.createTempDirectory(databasePath, "testCreateCollection");
+        createAndTestCollection(location, COLLECTION_NAME_PREFIX, 10);
+        FileUtils.deleteDirectory(location.toFile());
+    }
+
+    // Папка под DataBase не создана, должна создаться сама.
+    @Test
+    public void testCreateCollectionWithoutDir() throws IOException {
+        Path location = Paths.get(databasePath.toString(), "testCreateCollection");
         createAndTestCollection(location, COLLECTION_NAME_PREFIX, 10);
         FileUtils.deleteDirectory(location.toFile());
     }
