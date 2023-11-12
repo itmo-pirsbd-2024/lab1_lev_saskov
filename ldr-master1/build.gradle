@@ -20,7 +20,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     /////// Need for ldr-vector-db
-    //implementation name: 'ldr-vector-db-1.0.0'
+    implementation name: 'ldr-vector-db-1.0.0'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.13.0'
     implementation 'info.debatty:java-lsh:0.12'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'

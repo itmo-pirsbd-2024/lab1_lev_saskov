@@ -1,11 +1,14 @@
 package server;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import ldr.client.domen.Embedding;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.*;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.springframework.web.bind.annotation.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,7 +20,7 @@ import java.util.Map;
 import static server.RendezvousHashing.getNodeForId;
 
 public class HttpRequestUtil {
-    public static String sendRequest(String url, String method, String requestBody) throws IOException {
+    public static String sendRequest(String url, String method) throws IOException {
         HttpClient httpClient = HttpClients.createDefault();
         HttpRequestBase request;
 
@@ -27,15 +30,15 @@ public class HttpRequestUtil {
                 break;
             case "POST":
                 request = new HttpPost(url);
-                ((HttpPost) request).setEntity(new StringEntity(requestBody));
+                //     ((HttpPost) request).setEntity(new StringEntity(requestBody));
                 break;
             case "PUT":
                 request = new HttpPut(url);
-                ((HttpPut) request).setEntity(new StringEntity(requestBody));
+                //    ((HttpPut) request).setEntity(new StringEntity(requestBody));
                 break;
             case "DELETE":
                 request = new HttpDelete(url);
-                // ((HttpPut) request).setEntity(new StringEntity(requestBody));
+                //   ((HttpDelete) request).setEntity(new StringEntity(requestBody));
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported HTTP method: " + method);
@@ -58,25 +61,24 @@ public class HttpRequestUtil {
     }
 
     public static String createCollection(int port, String name, int vectorLen) throws IOException {
-        String url = "http://localhost:" + port + "/database/collection";
-        String requestBody = "name=" + name + "&vectorLen=" + vectorLen;
-        String response = sendRequest(url, "POST", requestBody);
+        String url = "http://localhost:" + port + "/database/collection" +
+                "?name=" + name + "&vectorLen=" + vectorLen;
+        String response = sendRequest(url, "POST");
         System.out.println("Response: " + response);
         return response;
     }
 
     public static String deleteCollection(int port, String name) throws IOException {
-        String url = "http://localhost:" + port + "/database/collection";
-        String requestBody = "name=" + name;
-        String response = sendRequest(url, "DELETE", requestBody);
+        String url = "http://localhost:" + port + "/database/collection" + "?" + "name=" + name;
+        String response = sendRequest(url, "DELETE");
         System.out.println("Response: " + response);
         return response;
     }
 
     public static String renameCollection(int port, String oldName, String newName) throws IOException {
-        String url = "http://localhost:" + port + "/database/collection";
-        String requestBody = "oldName=" + oldName + "&newName=" + newName;
-        String response = sendRequest(url, "PUT", requestBody);
+        String url = "http://localhost:" + port + "/database/collection" +
+                "?oldName=" + oldName + "&newName=" + newName;
+        String response = sendRequest(url, "PUT");
         System.out.println("Response: " + response);
         return response;
     }
@@ -86,11 +88,8 @@ public class HttpRequestUtil {
         List<String> nodes = new ArrayList<>(config.keySet());
         Long recordId = embedding.id();
         String selectedNode = getNodeForId(nodes, recordId);
-
         int port = config.get(selectedNode);
-        String url = "http://localhost:" + port + "/database/collection/" + collectionName;
-        String requestBody = "embedding=" + embedding + "&collectionName=" + collectionName;
-        String response = sendRequest(url, "PUT", requestBody);
+        String response = sendBodyRequest("COLLECTION_TEST", embedding, port);
         System.out.println("Response: " + response);
         return response;
     }
@@ -101,33 +100,49 @@ public class HttpRequestUtil {
         String selectedNode = getNodeForId(nodes, id);
         int port = config.get(selectedNode);
 
-        String url = "http://localhost:" + port + "/database/collection/" + collectionName;
-        String requestBody = "id=" + id + "&collectionName=" + collectionName;
-        String response = sendRequest(url, "DELETE", requestBody);
+        String url = "http://localhost:" + port + "/database/collection/" + collectionName +
+                "?id=" + id + "&collectionName=" + collectionName;
+        String response = sendRequest(url, "DELETE");
         System.out.println("Response: " + response);
         return response;
     }
 
+    public static String sendBodyRequest(String collectionName, Embedding embedding, int port) throws IOException {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            String url = "http://localhost:" + port + "/database/collection/" + collectionName;
+            HttpPut putRequest = new HttpPut(url);
+
+            // Преобразование Embedding объекта в JSON-строку
+            String requestBody = new ObjectMapper().writeValueAsString(embedding);
+            StringEntity stringEntity = new StringEntity(requestBody);
+            putRequest.setEntity(stringEntity);
+            putRequest.setHeader("Content-Type", "application/json");
+
+            // Выполнение PUT-запроса и получение ответа
+            HttpEntity responseEntity = httpClient.execute(putRequest).getEntity();
+            String responseString = org.apache.http.util.EntityUtils.toString(responseEntity);
+            return responseString;
+        }
+    }
 
     public static void main(String[] args) throws IOException {
-//        try {
-//            // Пример использования
-//            String url = "http://localhost:8081/database/collection";
-//            String method = "POST";
-//            String requestBody = "name=Colection1&vectorLen=5";
-//
-//            String response = sendRequest(url, method, requestBody);
-//            System.out.println("Response: " + response);
-//        } catch (IOException e) {
-//            e.printStackTrace();
         Embedding embedding = new Embedding(101, new double[]{13.0, 17.5, 15.0},
                 Map.of("color", "green", "size", "big"));
 
-        String response = createCollection(8081, "COLECTION_TEST", 10);
-        String response_1 = renameCollection(8081, "COLECTION_TEST", "COLECTION_TEST_NEW");
-        String response_2 = deleteCollection(8081, "COLECTION_TEST");
-        String response_3 = addToCollection(embedding, "COLECTION_TEST");
-        String response_4 = deleteFromCollection(8081, "COLECTION_TEST");
+        Map<String, Integer> config = MultiNodeApplication.nodePorts;
+        List<String> nodes = new ArrayList<>(config.keySet());
+
+        for (String node : nodes) {
+            int port = config.get(node);
+            System.out.println(port);
+            String responseCreateCollection = createCollection(port, "COLECTION_TEST", 10);
+            String responseRenameCollection = renameCollection(port, "COLECTION_TEST", "COLECTION_TEST_NEW");
+            String responseDeleteCollection = deleteCollection(port, "COLECTION_TEST");
+        }
+
+        String responseAddToCollection = addToCollection(embedding, "COLECTION_TEST");
+        String responseDeleteFromCollection = deleteFromCollection(106, "COLECTION_TEST");
+
     }
 }
 
