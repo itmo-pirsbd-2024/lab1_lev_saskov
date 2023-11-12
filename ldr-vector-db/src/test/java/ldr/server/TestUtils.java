@@ -13,7 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import ldr.client.domen.Embedding;
 
 public class TestUtils {
-    public static final Path resourcesPath = Paths.get("src", "test", "resources");
+    public static final Path resourcesPath = Paths.get("D://java//ldr-vector-database-modules//ldr-vector-db//src", "test", "resources");
 
     // Use only for not concurrent tests. For concurrent use ThreadLocalRandom.
     private static final Random random = new Random(10);
