@@ -14,5 +14,4 @@
 
 artifacts
 .DS_Store
-
-# TODO: Check that it is correct for modules.
+database

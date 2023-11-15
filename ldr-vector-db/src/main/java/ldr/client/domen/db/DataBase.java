@@ -27,7 +27,16 @@ public class DataBase implements IDataBase {
     private volatile boolean closed;
 
     public static DataBase load(Path location) throws IOException {
-        Map<String, Path> collectionLocations = loadCollectionLocations(location.resolve(META_FILENAME));
+        Map<String, Path> collectionLocations = null;
+        if (Files.exists(location)) {
+            collectionLocations = loadCollectionLocations(location.resolve(META_FILENAME));
+        } else {
+            Files.createDirectory(location);
+        }
+        if (collectionLocations == null) {
+            collectionLocations = new ConcurrentHashMap<>();
+        }
+
         Map<String, IVectorCollection> collections = new ConcurrentHashMap<>(collectionLocations.size());
 
         for (var entry : collectionLocations.entrySet()) {
@@ -119,20 +128,16 @@ public class DataBase implements IDataBase {
         log.info("Database successfully closed.");
     }
 
-    private static Map<String, Path> loadCollectionLocations(Path metaFile) {
+    private static Map<String, Path> loadCollectionLocations(Path metaFile) throws IOException {
         if (Files.exists(metaFile)) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                ConcurrentHashMap<String, Path> index =  mapper.readValue(metaFile.toFile(), new TypeReference<>() {
-                });
-                log.info("Index found. Initialization from file.");
-                return index;
-            } catch (IOException e) {
-                log.info("Can't find index file, it will be created.");
-            }
+            ObjectMapper mapper = new ObjectMapper();
+            ConcurrentHashMap<String, Path> index = mapper.readValue(metaFile.toFile(), new TypeReference<>() {
+            });
+            log.info("Index found. Initialization from file.");
+            return index;
         }
 
-        return new ConcurrentHashMap<>();
+        return null;
     }
 
     private void checkClose() {
