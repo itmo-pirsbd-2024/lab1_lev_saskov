@@ -2,6 +2,8 @@ package server;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +11,8 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,32 +42,40 @@ class WorkerControllerTest {
     @LocalServerPort
     private int port;
 
+    @BeforeAll
+    static void deleting() throws IOException {
+        // Удаляю в начале, а не в конце,
+        // поскольку спринг закрывает базу после теста и она опять флашится на диск.
+        if (Files.exists(Path.of(DB_LOCATION))) {
+            FileUtils.deleteDirectory(new File(DB_LOCATION));
+        }
+    }
+
     @Test
     void addAndDeleteCollection() throws IOException {
-        Param collName = new Param("name", "testColl");
+        String collName = "testColl";
+        Param collNameParam = new Param("name", collName);
 
         assertThat(
-                perform(HttpMethod.POST, collName, new Param("vectorLen", 10)).getStatusCode()
+                perform(HttpMethod.POST, collNameParam, new Param("vectorLen", 10)).getStatusCode()
         ).isEqualTo(HttpStatus.CREATED);
 
         assertThat(
-                perform(HttpMethod.DELETE, collName).getStatusCode()
+                perform(HttpMethod.DELETE, collNameParam).getStatusCode()
         ).isEqualTo(HttpStatus.OK);
-
-        FileUtils.deleteDirectory(new File(DB_LOCATION));
     }
 
     @Test
     void addVectorsTest() throws IOException {
         int vectorLen = 10;
         String coll = "addVectorsTest";
-        createCollection("addVectorsTest", vectorLen);
+        createCollection(coll, vectorLen);
         var embeddings = generateNearEmbeddings(100, vectorLen, 10);
 
-        String path = "/" + coll;
+        String collPath = "/" + coll;
         for (Embedding emb : embeddings) {
             assertThat(
-                    perform(HttpMethod.PUT, path, new HttpEntity<>(emb)).getStatusCode()
+                    perform(HttpMethod.PUT, collPath, new HttpEntity<>(emb)).getStatusCode()
             ).isEqualTo(HttpStatus.OK);
         }
 
@@ -74,7 +86,7 @@ class WorkerControllerTest {
         vector.deleteCharAt(vector.length() - 1);
 
         ResponseEntity<VectorCollectionResult> vcr = perform(
-                HttpMethod.GET, path, null, VectorCollectionResult.class,
+                HttpMethod.GET, collPath, null, VectorCollectionResult.class,
                 new Param("vector", vector.toString()),
                 new Param("maxNeighboursCount", 10)
         );
@@ -82,8 +94,6 @@ class WorkerControllerTest {
         assertThat(vcr.getBody()).isNotNull();
         assertThat(vcr.getBody().results()).isNotNull();
         assertThat(vcr.getBody().results()).isNotEmpty();
-
-        FileUtils.deleteDirectory(new File(DB_LOCATION));
     }
 
     private void createCollection(String name, int vectorLen) {
