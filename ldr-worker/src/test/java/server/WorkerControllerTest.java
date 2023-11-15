@@ -126,6 +126,8 @@ class WorkerControllerTest {
         }
     }
 
+
+    // TODO: Make common with ldr-vector-db. To not duplicate code.
     /**
      * Generate near vectors with random id, дельта по каждой координате < coordinateDeltaBound.
      */
