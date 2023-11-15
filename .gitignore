@@ -13,5 +13,6 @@
 .gradletasknamecache
 
 artifacts
+apps
 .DS_Store
 database
