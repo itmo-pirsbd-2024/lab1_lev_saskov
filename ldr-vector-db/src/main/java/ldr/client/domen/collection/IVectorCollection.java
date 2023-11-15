@@ -15,7 +15,7 @@ public interface IVectorCollection extends Closeable {
 
     void add(List<Embedding> embeddings);
 
-    VectorCollectionResult query(double[] vector, int maxNeighborsCount);
+    VectorCollectionResult query(double[] vector, int maxNeighboursCount);
 
     /**
      * Own rules for filter, for ex meta1Key:eq:meta1Val
