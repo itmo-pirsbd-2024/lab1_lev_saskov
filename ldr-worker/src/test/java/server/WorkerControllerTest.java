@@ -11,16 +11,18 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import client.IWorkerClient;
-import client.WorkerClient;
 import ldr.client.domen.Embedding;
 import ldr.client.domen.VectorCollectionResult;
 
@@ -34,7 +36,8 @@ class WorkerControllerTest {
     static final String DB_LOCATION = "src/test/resources/database";
     private static final Random random = new Random();
 
-    private IWorkerClient workerClient;
+    @Autowired
+    private TestRestTemplate restTemplate;
 
     @LocalServerPort
     private int port;
@@ -48,18 +51,17 @@ class WorkerControllerTest {
         }
     }
 
-    @BeforeEach
-    void setUp() {
-        workerClient = new WorkerClient("http://localhost:" + port + "/database/collection", "testWorker");
-    }
-
     @Test
     void addAndDeleteCollection() throws IOException {
         String collName = "testColl";
+        Param collNameParam = new Param("name", collName);
 
-        createCollection(collName, 10);
         assertThat(
-                workerClient.deleteCollection(collName).getStatusCode()
+                perform(HttpMethod.POST, collNameParam, new Param("vectorLen", 10)).getStatusCode()
+        ).isEqualTo(HttpStatus.CREATED);
+
+        assertThat(
+                perform(HttpMethod.DELETE, collNameParam).getStatusCode()
         ).isEqualTo(HttpStatus.OK);
     }
 
@@ -70,14 +72,24 @@ class WorkerControllerTest {
         createCollection(coll, vectorLen);
         var embeddings = generateNearEmbeddings(100, vectorLen, 10);
 
+        String collPath = "/" + coll;
         for (Embedding emb : embeddings) {
             assertThat(
-                    workerClient.addToCollection(emb, coll).getStatusCode()
+                    perform(HttpMethod.PUT, collPath, new HttpEntity<>(emb)).getStatusCode()
             ).isEqualTo(HttpStatus.OK);
         }
 
-        ResponseEntity<VectorCollectionResult> vcr = workerClient
-                .query(embeddings.get(0).vector(), 10, coll);
+        StringBuilder vector = new StringBuilder();
+        for (double val : embeddings.get(0).vector()) {
+            vector.append(val).append(",");
+        }
+        vector.deleteCharAt(vector.length() - 1);
+
+        ResponseEntity<VectorCollectionResult> vcr = perform(
+                HttpMethod.GET, collPath, null, VectorCollectionResult.class,
+                new Param("vector", vector.toString()),
+                new Param("maxNeighboursCount", 10)
+        );
         assertThat(vcr.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(vcr.getBody()).isNotNull();
         assertThat(vcr.getBody().results()).isNotNull();
@@ -85,11 +97,45 @@ class WorkerControllerTest {
     }
 
     private void createCollection(String name, int vectorLen) {
+        Param nameParam = new Param("name", name);
+        Param vectorLenParam = new Param("vectorLen", vectorLen);
+
         assertThat(
-                workerClient.createCollection(name, vectorLen).getStatusCode()
+                perform(HttpMethod.POST, nameParam, vectorLenParam).getStatusCode()
         ).isEqualTo(HttpStatus.CREATED);
 
     }
+
+    private ResponseEntity<String> perform(HttpMethod method, Param... params) {
+        return perform(method, "", null, String.class, params);
+    }
+
+    private ResponseEntity<String> perform(HttpMethod method, String path, HttpEntity<?> requestBody, Param... params) {
+        return perform(method, path, requestBody, String.class, params);
+    }
+
+    private <T> ResponseEntity<T> perform(HttpMethod method, String path, HttpEntity<?> requestBody,
+                                          Class<T> responseType, Param... params) {
+        StringBuilder uri = new StringBuilder("http://localhost:" + port + "/database/collection" + path);
+        if (params.length != 0) {
+            uri.append("?");
+            final int lastParam = params.length - 1;
+            for (int i = 0; i < lastParam; i++) {
+                uri.append(params[i]);
+                uri.append("&");
+            }
+            uri.append(params[lastParam]);
+        }
+        return restTemplate.exchange(uri.toString(), method, requestBody, responseType);
+    }
+
+    record Param(String name, Object value) {
+        @Override
+        public String toString() {
+            return name + "=" + value;
+        }
+    }
+
 
     // TODO: Make common with ldr-vector-db. To not duplicate code.
     /**
@@ -115,7 +161,7 @@ class WorkerControllerTest {
         return result;
     }
 
-    public static double[] generateVector(int vectorLen) {
+    private static double[] generateVector(int vectorLen) {
         double[] vector = new double[vectorLen];
         for (int i = 0; i < vectorLen; i++) {
             vector[i] = ThreadLocalRandom.current().nextDouble(1000.0);

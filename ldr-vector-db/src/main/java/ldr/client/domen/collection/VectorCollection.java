@@ -2,19 +2,14 @@ package ldr.client.domen.collection;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.LocaleUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +99,7 @@ public class VectorCollection implements IVectorCollection {
     }
 
     @Override
-    public VectorCollectionResult query(double[] vector, int maxNeighboursCount) {
+    public VectorCollectionResult query(double[] vector, int maxNeighborsCount) {
         checkClosed();
 
         Set<Long> nearest = index.getNearest(vector);
@@ -113,18 +108,13 @@ public class VectorCollection implements IVectorCollection {
         }
 
         List<Embedding> embeddings = storage.get(nearest.stream().toList());
-        FixedSizePriorityQueue<DistancedEmbedding> queue = new FixedSizePriorityQueue<>(
-                maxNeighboursCount,
-                // Max distanced will be deleted
-                (o1, o2) -> Double.compare(o2.distance(), o1.distance())
-        );
+        FixedSizePriorityQueue<DistancedEmbedding> queue = new FixedSizePriorityQueue<>(maxNeighborsCount);
         embeddings.forEach(e -> queue.add(new DistancedEmbedding(e, getDistance(vector, e.vector()))));
 
         List<DistancedEmbedding> results = new ArrayList<>();
-        while (!queue.isEmpty()) {
+        for (int i = 0; i < queue.size(); i++) {
             results.add(queue.poll());
         }
-        Collections.reverse(results);
 
         return new VectorCollectionResult(results);
     }

@@ -24,13 +24,13 @@ public class TestProtobufComparsion {
     private static final int maxDim = 100;
     private static final int maxMetaSize = 10;
 
-//    @Disabled("Used only for comparing serializations in lab1")
+    @Disabled("Used only for comparing serializations in lab1")
     @Test
     public void testMyProtobuf() throws IOException {
         doTest("my protobuf", new EmbeddingEncoder());
     }
 
-//    @Disabled("Used only for comparing serializations in lab1")
+    @Disabled("Used only for comparing serializations in lab1")
     @Test
     public void testDefaultProtobuf() throws IOException {
         doTest("default protobuf", new ProtobufEmbeddingEncoder());
