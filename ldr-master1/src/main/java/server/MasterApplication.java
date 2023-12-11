@@ -4,8 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class VectorDatabaseApplication {
+public class MasterApplication {
     public static void main(String[] args) {
-        SpringApplication.run(VectorDatabaseApplication.class, args);
+        SpringApplication.run(MasterApplication.class, args);
     }
 }

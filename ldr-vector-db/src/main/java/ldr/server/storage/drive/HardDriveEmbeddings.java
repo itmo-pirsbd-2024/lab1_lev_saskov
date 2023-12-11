@@ -27,6 +27,7 @@ import ldr.server.serialization.my.DataEncoder;
 import ldr.server.serialization.my.EmbeddingEncoder;
 import ldr.server.util.PeekIterator;
 
+// TODO: ByteBuffer size -> long size
 public class HardDriveEmbeddings implements IHardDriveEmbeddings {
     private static final Logger log = LoggerFactory.getLogger(HardDriveEmbeddings.class);
     private static final String OFFSETS_FILENAME = "offsets.off";
