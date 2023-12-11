@@ -39,7 +39,8 @@ public class VectorCollection implements IVectorCollection {
     private static final String CONFIG_FILENAME = "config.json";
     private static final String STORAGE_FOLDER = "storage";
     private static final String INDEX_FILENAME = "index.json";
-    private static final int FLUSH_THRESHOLD_BYTES = 300_000;
+    // ~ 50 MB
+    private static final int FLUSH_THRESHOLD_BYTES = 50_000_000;
     private static final int META_ENTRY_SIZE = 15;
 
     private final IStorageManager storage;

@@ -17,6 +17,25 @@ public class TestUtils {
 
     // Use only for not concurrent tests. For concurrent use ThreadLocalRandom.
     private static final Random random = new Random(10);
+    private static final String[] colors = {"red", "blue", "green", "yellow"};
+
+    public static List<Embedding> generateFixedEmbeddings(int count, int dim, int metaSize) {
+        List<Embedding> embeddings = new ArrayList<>();
+
+        for (int i = 0; i < count; i++) {
+            embeddings.add(new Embedding(random.nextInt(), generateVector(dim, 1.0), generateColorMeta(metaSize)));
+        }
+
+        return embeddings;
+    }
+
+    private static Map<String, String> generateColorMeta(int size) {
+        Map<String, String> meta = new HashMap<>(size);
+        for (int i = 0; i < size; i++) {
+            meta.put("color" + i, colors[i % colors.length]);
+        }
+        return meta;
+    }
 
     public static List<Embedding> generateManyEmbeddings(int count, int maxVectorLen, int maxMetaSize) {
         return generateManyEmbeddings(count, maxVectorLen, maxMetaSize, false);
@@ -94,9 +113,13 @@ public class TestUtils {
     }
 
     private static double[] generateVector(int vectorLen) {
+        return generateVector(vectorLen, 1000.0);
+    }
+
+    public static double[] generateVector(int vectorLen, double bound) {
         double[] vector = new double[vectorLen];
         for (int i = 0; i < vectorLen; i++) {
-            vector[i] = ThreadLocalRandom.current().nextDouble(1000.0);
+            vector[i] = ThreadLocalRandom.current().nextDouble(bound);
         }
 
         return vector;
