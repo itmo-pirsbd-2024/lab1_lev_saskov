@@ -1,12 +1,16 @@
 package server.pool;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jdk.jshell.execution.Util;
+import server.naming.Utils;
 
 public class ConsistentHashing implements IWorkersHashing {
     private static final Logger log = LoggerFactory.getLogger(ConsistentHashing.class);
@@ -25,36 +29,29 @@ public class ConsistentHashing implements IWorkersHashing {
     }
 
     @Override
-    public List<Integer> addWorker(String worker) {
-        int[] borderDomains = getWorkerBorderDomains(worker);
+    public Set<Integer> addWorker(String name) {
+        int[] borderDomains = getWorkerBorderDomains(name);
         for (int domain : borderDomains) {
-            circle.put(domain, worker);
+            circle.put(domain, name);
         }
         log.info("Circle border domains for new worker: {}", Arrays.toString(borderDomains));
 
-        List<Integer> result = new ArrayList<>();
-        // TODO: Не оптимально, наверное, можно проще?
-        for (int domain = 0; domain < DOMAINS_COUNT; domain++) {
-            if (getWorker(domain).equals(worker)) {
-                result.add(domain);
-            }
-        }
-
-        log.info("Added new worker: {}. It responsible for domains: {}", worker, result);
+        Set<Integer> result = getDomains(name);
+        log.info("Added new worker: {}. It responsible for domains: {}", name, result);
         return result;
     }
 
-    // TODO: worker выбывший из ротации и потом вошедший с непочищенными данными все сломает.
+    // TODO: worker выбывший из ротации и потом вошедший с непочищенными данными все сломает?
     @Override
-    public void deleteWorker(String worker) {
-        int[] borderDomains = getWorkerBorderDomains(worker);
+    public void deleteWorker(String name) {
+        int[] borderDomains = getWorkerBorderDomains(name);
         for (int domain : borderDomains) {
             String responsibleWorker = circle.get(domain);
-            if (responsibleWorker.equals(worker)) {
+            if (responsibleWorker.equals(name)) {
                 circle.remove(domain);
             } else {
                 log.error("Error deleting worker circle another worker responsible for this domain, " +
-                        "domain: {}, deleting worker: {}, responsible worker: {}", domain, worker, responsibleWorker);
+                        "domain: {}, deleting worker: {}, responsible worker: {}", domain, name, responsibleWorker);
             }
         }
         log.info("Circle border domains for new worker: {}", Arrays.toString(borderDomains));
@@ -80,9 +77,22 @@ public class ConsistentHashing implements IWorkersHashing {
         int domain = getDomain(id);
 
         String worker = getWorker(domain);
-        String internalCollection = collection + domain;
+        String internalCollection = Utils.getInternalCollection(collection, domain);
 
         return new Owner(worker, internalCollection);
+    }
+
+    @Override
+    public Set<Integer> getDomains(String workerName) {
+        Set<Integer> result = new HashSet<>();
+        // TODO: Не оптимально, наверное, можно проще?
+        for (int domain = 0; domain < DOMAINS_COUNT; domain++) {
+            if (getWorker(domain).equals(workerName)) {
+                result.add(domain);
+            }
+        }
+
+        return result;
     }
 
     private String getWorker(int domain) {

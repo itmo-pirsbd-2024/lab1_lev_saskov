@@ -149,7 +149,7 @@ public class HardDriveEmbeddings implements IHardDriveEmbeddings {
      */
     private Iterator<Embedding> getMergedIterator(Iterator<Embedding> out) {
         PeekIterator outPeek = new PeekIterator(out);
-        PeekIterator inPeek = new PeekIterator(getAllSaved());
+        PeekIterator inPeek = new PeekIterator(getAll());
         return new GravedMergedIterator(outPeek, inPeek);
     }
 
@@ -157,7 +157,8 @@ public class HardDriveEmbeddings implements IHardDriveEmbeddings {
      * Get all saved from this.state.
      * No locking, use only during save operation to merge with embeddings from outer scope.
      */
-    private Iterator<Embedding> getAllSaved() {
+    @Override
+    public Iterator<Embedding> getAll() {
         return new Iterator<>() {
             int position;
 

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,11 +18,37 @@ import ldr.client.domen.VectorCollectionResult;
 import static ldr.server.TestUtils.generateNearEmbeddings;
 import static ldr.server.TestUtils.randomInt;
 import static ldr.server.TestUtils.resourcesPath;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VectorCollectionTest {
     private static final Path indexFolder = resourcesPath;
+
+    @Test
+    public void testGetAll() throws IOException {
+        Path location = Files.createTempDirectory(indexFolder, "testAddAndSearch");
+
+        int vectorLen = 10;
+        IVectorCollection collection = VectorCollection.load(new VectorCollection.Config(location, vectorLen));
+        List<Embedding> all = new ArrayList<>();
+        int groupsCount = 10;
+        for (int i = 0; i < groupsCount; i++) {
+            var group = generateNearEmbeddings(1000, vectorLen, 10);
+            all.addAll(group);
+            collection.add(group);
+        }
+
+        var allIter = collection.getAll();
+        int allIterSize = 0;
+        while (allIter.hasNext()) {
+            assertTrue(all.contains(allIter.next()));
+            allIterSize++;
+        }
+        assertEquals(allIterSize, all.size());
+        collection.close();
+        FileUtils.deleteDirectory(location.toFile());
+    }
 
     @Test
     public void testAddAndSearch() throws IOException {
@@ -33,6 +60,7 @@ class VectorCollectionTest {
 
         checkSearch(collection, groups);
 
+        collection.close();
         FileUtils.deleteDirectory(location.toFile());
     }
 
@@ -41,12 +69,12 @@ class VectorCollectionTest {
         Path location = Files.createTempDirectory(indexFolder, "testAddAndSearchWithClose");
         int vectorLen = 10;
         List<List<Embedding>> groups;
-        try(IVectorCollection collection = VectorCollection.load(new VectorCollection.Config(location, vectorLen))) {
+        try (IVectorCollection collection = VectorCollection.load(new VectorCollection.Config(location, vectorLen))) {
             groups = addGroups(collection, 10, vectorLen);
             checkSearch(collection, groups);
         }
 
-        try(IVectorCollection collection = VectorCollection.load(new VectorCollection.Config(location, vectorLen))) {
+        try (IVectorCollection collection = VectorCollection.load(new VectorCollection.Config(location, vectorLen))) {
             checkSearch(collection, groups);
         }
 

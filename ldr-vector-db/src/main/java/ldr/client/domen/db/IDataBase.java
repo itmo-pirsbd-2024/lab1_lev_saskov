@@ -1,6 +1,7 @@
 package ldr.client.domen.db;
 
 import java.io.IOException;
+import java.util.List;
 
 import ldr.client.domen.collection.IVectorCollection;
 
@@ -9,6 +10,8 @@ public interface IDataBase {
      * Throws NoSuchElementException, if not exists.
      */
     IVectorCollection getCollection(String name);
+
+    List<String> getAllCollections();
 
     /**
      * Throws KeyAlreadyExistsException, if already presented.

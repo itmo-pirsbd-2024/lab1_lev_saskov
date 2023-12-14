@@ -1,50 +1,48 @@
-package client;
+package server.remote;
+
+import java.util.Iterator;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import ldr.client.domen.Embedding;
 import ldr.client.domen.VectorCollectionResult;
+import ldr.client.domen.collection.IVectorCollection;
 
 // TODO: avoid hardcode with paramnames.
-public class WorkerClient implements IWorkerClient {
+public class RemoteWorker extends Worker implements IRemoteWorker {
     private final RestTemplate restTemplate = new RestTemplate();
-    private final String dbUrl;
-    // Can be used for identification and rendezvous hashing
-    private final String nodeName;
 
-    public WorkerClient(String dbUrl, String nodeName) {
-        this.dbUrl = dbUrl;
-        this.nodeName = nodeName;
+    public RemoteWorker(String name, String host) {
+        super(name, host);
     }
 
-    @Override
-    public ResponseEntity<String> createCollection(String name, int vectorLen) {
-        return perform(HttpMethod.POST, new Param("name", name), new Param("vectorLen", vectorLen));
-    }
-
-    @Override
-    public ResponseEntity<String> deleteCollection(String name) {
-        return perform(HttpMethod.DELETE, new Param("name", name));
-    }
-
-    // TODO: test it.
-    @Override
-    public ResponseEntity<String> renameCollection(String oldName, String newName) {
-        return perform(HttpMethod.PUT, new Param("oldName", oldName), new Param("newName", newName));
-    }
-
+    /**
+     * У remote worker-a internal реализация, поскольку к нему может обращаться только другой воркер.
+     */
     @Override
     public ResponseEntity<String> addToCollection(Embedding embedding, String collectionName) {
         return perform(HttpMethod.PUT, collectionToPath(collectionName), new HttpEntity<>(embedding));
     }
 
-    // TODO: test it.
     @Override
     public ResponseEntity<String> deleteFromCollection(long id, String collectionName) {
-        return perform(HttpMethod.DELETE, new Param("id", id), new Param("collectionName", collectionName));
+        return perform(HttpMethod.DELETE, collectionToPath(collectionName), null, new Param("id", id));
+    }
+
+    // TODO: Мб подрефакторить ldr-vector-db и добавить имя в VectorCollection
+    @Override
+    public ResponseEntity<String> sendCollection(String collectionName, IVectorCollection collection) {
+        Iterator<Embedding> all = collection.getAll();
+        // TODO: Отсылать чанками, а не по одному.
+        while (all.hasNext()) {
+            addToCollection(all.next(), collectionName);
+        }
+
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @Override
@@ -64,17 +62,8 @@ public class WorkerClient implements IWorkerClient {
         );
     }
 
-    @Override
-    public String getNodeName() {
-        return nodeName;
-    }
-
     private String collectionToPath(String collectionName) {
-        return "/" + collectionName;
-    }
-
-    private ResponseEntity<String> perform(HttpMethod method, Param... params) {
-        return perform(method, "", null, String.class, params);
+        return "/internal/" + collectionName;
     }
 
     private ResponseEntity<String> perform(HttpMethod method, String path, HttpEntity<?> requestBody, Param... params) {
@@ -83,7 +72,7 @@ public class WorkerClient implements IWorkerClient {
 
     private <T> ResponseEntity<T> perform(HttpMethod method, String path, HttpEntity<?> requestBody,
                                           Class<T> responseType, Param... params) {
-        StringBuilder uri = new StringBuilder(dbUrl).append(path);
+        StringBuilder uri = new StringBuilder(host).append(path);
         if (params.length != 0) {
             uri.append("?");
             final int lastParam = params.length - 1;

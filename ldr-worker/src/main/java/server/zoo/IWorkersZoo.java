@@ -1,7 +1,6 @@
 package server.zoo;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 public interface IWorkersZoo {
     /**
@@ -10,10 +9,14 @@ public interface IWorkersZoo {
      * @param subscriber - after each worker pool update will be called with new list of workers.
      *                   unmodifiable list will be accepted.
      */
-    void subscribe(Consumer<List<String>> subscriber);
+    void subscribe(IWorkersSubscriber subscriber);
 
     /**
-     * @return unmodifiable list of last updated workers.
+     * @return list of last updated workers.
      */
-    List<String> getWorkers();
+    List<WorkerInfo> getWorkers();
+
+    void addWorker(WorkerInfo worker);
+
+    record WorkerInfo(String name, String host) {}
 }

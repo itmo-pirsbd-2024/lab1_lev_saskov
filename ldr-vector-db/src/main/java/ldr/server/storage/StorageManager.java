@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -61,6 +62,17 @@ public class StorageManager implements IStorageManager {
         }
 
         return result;
+    }
+
+    @Override
+    public Iterator<Embedding> getAll() {
+        try {
+            flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return inDrive.getAll();
     }
 
     @Override
