@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -147,6 +148,11 @@ public class VectorCollection implements IVectorCollection {
     @Override
     public VectorCollectionResult query(double[] vector, int maxNeighborsCount, String filter) {
         throw new NotImplementedException();
+    }
+
+    @Override
+    public Iterator<Embedding> getAll() {
+        return storage.getAll();
     }
 
     @Override

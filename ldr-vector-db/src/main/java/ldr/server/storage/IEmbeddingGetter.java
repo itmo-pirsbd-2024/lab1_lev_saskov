@@ -1,5 +1,6 @@
 package ldr.server.storage;
 
+import java.util.Iterator;
 import java.util.List;
 
 import ldr.client.domen.Embedding;
@@ -14,4 +15,9 @@ public interface IEmbeddingGetter {
      * List of all found embeddings with given ids.
      */
     List<Embedding> get(List<Long> ids);
+
+    /**
+     * flush then get all from disc, if more writing during reading will be done iterator won't be updated.
+     */
+    Iterator<Embedding> getAll();
 }

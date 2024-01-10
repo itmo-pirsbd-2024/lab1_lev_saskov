@@ -4,6 +4,8 @@ import javax.management.openmbean.KeyAlreadyExistsException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,6 +67,11 @@ public class DataBase implements IDataBase {
         }
 
         return collection;
+    }
+
+    @Override
+    public List<String> getAllCollections() {
+        return new ArrayList<>(collections.keySet());
     }
 
     @Override

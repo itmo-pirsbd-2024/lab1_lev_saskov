@@ -2,6 +2,7 @@ package ldr.client.domen.collection;
 
 import java.io.Closeable;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import ldr.client.domen.Embedding;
@@ -21,6 +22,8 @@ public interface IVectorCollection extends Closeable {
      * Own rules for filter, for ex meta1Key:eq:meta1Val
      */
     VectorCollectionResult query(double[] vector, int maxNeighborsCount, String filter);
+
+    Iterator<Embedding> getAll();
 
     void delete(long id);
 
