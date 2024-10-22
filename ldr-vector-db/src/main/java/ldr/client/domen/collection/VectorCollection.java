@@ -182,7 +182,7 @@ public class VectorCollection implements IVectorCollection {
     public void close() throws IOException {
         checkClosed();
         closed = true;
-
+        flush();
         for (Closeable mem : hardMemory) {
             mem.close();
         }
@@ -212,6 +212,13 @@ public class VectorCollection implements IVectorCollection {
         });
         log.info("Config was loaded: {}", config);
         return config;
+    }
+
+    @Override
+    public void flush() throws IOException {
+        for (var m: hardMemory) {
+            m.flush();
+        }
     }
 
     /**

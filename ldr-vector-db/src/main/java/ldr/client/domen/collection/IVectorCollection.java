@@ -1,6 +1,7 @@
 package ldr.client.domen.collection;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.List;
 import ldr.client.domen.Embedding;
 import ldr.client.domen.VectorCollectionResult;
 
-public interface IVectorCollection extends Closeable {
+public interface IVectorCollection extends Closeable, Flushable {
     /**
      * If embedding is already presented, then it will be updated.
      */

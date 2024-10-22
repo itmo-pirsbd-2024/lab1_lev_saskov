@@ -47,7 +47,8 @@ test {
 }
 
 jmh {
-    excludes = ['.*CreateBenchmark.*', '.*ReadBenchmark.*', '.*UpdateBenchmark.*']
+//    benchmark
+//    excludes = ['.*CreateBenchmark.*', '.*ReadBenchmark.*', '.*UpdateBenchmark.*']
 }
 
 jar{
