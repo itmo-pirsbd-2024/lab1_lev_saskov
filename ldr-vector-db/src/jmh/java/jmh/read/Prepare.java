@@ -28,13 +28,17 @@ public class Prepare {
         return vectorEncoder.decode(Files.readAllBytes(locationVector)).result();
     }
 
+    public static double[] generateVector() {
+        return TestUtils.generateVector(DIM, 1.0);
+    }
+
     public static void main(String[] args) throws IOException {
         List<Embedding> embeddings = TestUtils.generateFixedEmbeddings(COUNT, DIM, META_SIZE);
         var collection = VectorCollection.load(new VectorCollection.Config(locationCollection, DIM));
         collection.add(embeddings);
         collection.close();
 
-        var vector = TestUtils.generateVector(DIM, 1.0);
+        var vector = generateVector();
         Files.write(locationVector, vectorEncoder.encode(vector));
     }
 }

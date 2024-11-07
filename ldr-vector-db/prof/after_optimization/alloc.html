@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<style>
+	body {margin: 0; padding: 10px 10px 22px 10px; background-color: #ffffff}
+	h1 {margin: 5px 0 0 0; font-size: 18px; font-weight: normal; text-align: center}
+	header {margin: -24px 0 5px 0; line-height: 24px}
+	button {font: 12px sans-serif; cursor: pointer}
+	p {position: fixed; bottom: 0; margin: 0; padding: 2px 3px 2px 3px; outline: 1px solid #ffc000; display: none; overflow: hidden; white-space: nowrap; background-color: #ffffe0}
+	a {color: #0366d6}
+	#hl {position: absolute; display: none; overflow: hidden; white-space: nowrap; pointer-events: none; background-color: #ffffe0; outline: 1px solid #ffc000; height: 15px}
+	#hl span {padding: 0 3px 0 3px}
+	#status {left: 0}
+	#match {right: 0}
+	#reset {cursor: pointer}
+	#canvas {width: 100%; height: 768px}
+</style>
+</head>
+<body style='font: 12px Verdana, sans-serif'>
+<h1>Allocation profile</h1>
+<header style='text-align: left'><button id='reverse' title='Reverse'>&#x1f53b;</button>&nbsp;&nbsp;<button id='search' title='Search'>&#x1f50d;</button></header>
+<header style='text-align: right'>Produced by <a href='https://github.com/async-profiler/async-profiler'>async-profiler</a></header>
+<canvas id='canvas'></canvas>
+<div id='hl'><span></span></div>
+<p id='status'></p>
+<p id='match'>Matched: <span id='matchval'></span> <span id='reset' title='Clear'>&#x274c;</span></p>
+<script>
+	// Copyright The async-profiler authors
+	// SPDX-License-Identifier: Apache-2.0
+	'use strict';
+	let root, rootLevel, px, pattern;
+	let level0 = 0, left0 = 0, width0 = 0;
+	let reverse = false;
+	const levels = Array(48);
+	for (let h = 0; h < levels.length; h++) {
+		levels[h] = [];
+	}
+
+	const canvas = document.getElementById('canvas');
+	const c = canvas.getContext('2d');
+	const hl = document.getElementById('hl');
+	const status = document.getElementById('status');
+
+	const canvasWidth = canvas.offsetWidth;
+	const canvasHeight = canvas.offsetHeight;
+	canvas.style.width = canvasWidth + 'px';
+	canvas.width = canvasWidth * (devicePixelRatio || 1);
+	canvas.height = canvasHeight * (devicePixelRatio || 1);
+	if (devicePixelRatio) c.scale(devicePixelRatio, devicePixelRatio);
+	c.font = document.body.style.font;
+
+	const palette = [
+		[0xb2e1b2, 20, 20, 20],
+		[0x50e150, 30, 30, 30],
+		[0x50cccc, 30, 30, 30],
+		[0xe15a5a, 30, 40, 40],
+		[0xc8c83c, 30, 30, 10],
+		[0xe17d00, 30, 30,  0],
+		[0xcce880, 20, 20, 20],
+	];
+
+	function getColor(p) {
+		const v = Math.random();
+		return '#' + (p[0] + ((p[1] * v) << 16 | (p[2] * v) << 8 | (p[3] * v))).toString(16);
+	}
+
+	function f(key, level, left, width, inln, c1, int) {
+		levels[level0 = level].push({left: left0 += left, width: width0 = width || width0,
+			color: getColor(palette[key & 7]), title: cpool[key >>> 3],
+			details: (int ? ', int=' + int : '') + (c1 ? ', c1=' + c1 : '') + (inln ? ', inln=' + inln : '')
+		});
+	}
+
+	function u(key, width, inln, c1, int) {
+		f(key, level0 + 1, 0, width, inln, c1, int)
+	}
+
+	function n(key, width, inln, c1, int) {
+		f(key, level0, width0, width, inln, c1, int)
+	}
+
+	function samples(n) {
+		return n === 1 ? '1 sample' : n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' samples';
+	}
+
+	function pct(a, b) {
+		return a >= b ? '100' : (100 * a / b).toFixed(2);
+	}
+
+	function findFrame(frames, x) {
+		let left = 0;
+		let right = frames.length - 1;
+
+		while (left <= right) {
+			const mid = (left + right) >>> 1;
+			const f = frames[mid];
+
+			if (f.left > x) {
+				right = mid - 1;
+			} else if (f.left + f.width <= x) {
+				left = mid + 1;
+			} else {
+				return f;
+			}
+		}
+
+		if (frames[left] && (frames[left].left - x) * px < 0.5) return frames[left];
+		if (frames[right] && (x - (frames[right].left + frames[right].width)) * px < 0.5) return frames[right];
+
+		return null;
+	}
+
+	function search(r) {
+		if (r === true && (r = prompt('Enter regexp to search:', '')) === null) {
+			return;
+		}
+
+		pattern = r ? RegExp(r) : undefined;
+		const matched = render(root, rootLevel);
+		document.getElementById('matchval').textContent = pct(matched, root.width) + '%';
+		document.getElementById('match').style.display = r ? 'inline-block' : 'none';
+	}
+
+	function render(newRoot, newLevel) {
+		if (root) {
+			c.fillStyle = '#ffffff';
+			c.fillRect(0, 0, canvasWidth, canvasHeight);
+		}
+
+		root = newRoot || levels[0][0];
+		rootLevel = newLevel || 0;
+		px = canvasWidth / root.width;
+
+		const x0 = root.left;
+		const x1 = x0 + root.width;
+		const marked = [];
+
+		function mark(f) {
+			return marked[f.left] >= f.width || (marked[f.left] = f.width);
+		}
+
+		function totalMarked() {
+			let total = 0;
+			let left = 0;
+			Object.keys(marked).sort(function(a, b) { return a - b; }).forEach(function(x) {
+				if (+x >= left) {
+					total += marked[x];
+					left = +x + marked[x];
+				}
+			});
+			return total;
+		}
+
+		function drawFrame(f, y, alpha) {
+			if (f.left < x1 && f.left + f.width > x0) {
+				c.fillStyle = pattern && f.title.match(pattern) && mark(f) ? '#ee00ee' : f.color;
+				c.fillRect((f.left - x0) * px, y, f.width * px, 15);
+
+				if (f.width * px >= 21) {
+					const chars = Math.floor(f.width * px / 7);
+					const title = f.title.length <= chars ? f.title : f.title.substring(0, chars - 2) + '..';
+					c.fillStyle = '#000000';
+					c.fillText(title, Math.max(f.left - x0, 0) * px + 3, y + 12, f.width * px - 6);
+				}
+
+				if (alpha) {
+					c.fillStyle = 'rgba(255, 255, 255, 0.5)';
+					c.fillRect((f.left - x0) * px, y, f.width * px, 15);
+				}
+			}
+		}
+
+		for (let h = 0; h < levels.length; h++) {
+			const y = reverse ? h * 16 : canvasHeight - (h + 1) * 16;
+			const frames = levels[h];
+			for (let i = 0; i < frames.length; i++) {
+				drawFrame(frames[i], y, h < rootLevel);
+			}
+		}
+
+		return totalMarked();
+	}
+
+	function unpack(cpool) {
+		for (let i = 1; i < cpool.length; i++) {
+			cpool[i] = cpool[i - 1].substring(0, cpool[i].charCodeAt(0) - 32) + cpool[i].substring(1);
+		}
+	}
+
+	canvas.onmousemove = function() {
+		const h = Math.floor((reverse ? event.offsetY : (canvasHeight - event.offsetY)) / 16);
+		if (h >= 0 && h < levels.length) {
+			const f = findFrame(levels[h], event.offsetX / px + root.left);
+			if (f) {
+				if (f !== root) getSelection().removeAllRanges();
+				hl.style.left = (Math.max(f.left - root.left, 0) * px + canvas.offsetLeft) + 'px';
+				hl.style.width = (Math.min(f.width, root.width) * px) + 'px';
+				hl.style.top = ((reverse ? h * 16 : canvasHeight - (h + 1) * 16) + canvas.offsetTop) + 'px';
+				hl.firstChild.textContent = f.title;
+				hl.style.display = 'block';
+				canvas.title = f.title + '\n(' + samples(f.width) + f.details + ', ' + pct(f.width, levels[0][0].width) + '%)';
+				canvas.style.cursor = 'pointer';
+				canvas.onclick = function() {
+					if (f !== root) {
+						render(f, h);
+						canvas.onmousemove();
+					}
+				};
+				status.textContent = 'Function: ' + canvas.title;
+				status.style.display = 'inline-block';
+				return;
+			}
+		}
+		canvas.onmouseout();
+	}
+
+	canvas.onmouseout = function() {
+		hl.style.display = 'none';
+		status.style.display = 'none';
+		canvas.title = '';
+		canvas.style.cursor = '';
+		canvas.onclick = null;
+	}
+
+	canvas.ondblclick = function() {
+		getSelection().selectAllChildren(hl);
+	}
+
+	document.getElementById('reverse').onclick = function() {
+		reverse = !reverse;
+		render();
+	}
+
+	document.getElementById('search').onclick = function() {
+		search(true);
+	}
+
+	document.getElementById('reset').onclick = function() {
+		search(false);
+	}
+
+	window.onkeydown = function() {
+		if (event.ctrlKey && event.keyCode === 70) {
+			event.preventDefault();
+			search(true);
+		} else if (event.keyCode === 27) {
+			search(false);
+		}
+	}
+
+const cpool = [
+'all',
+' byte[]',
+' double[]',
+' info/debatty/java/lsh/LSH.hashSignature',
+'9SuperBit.hash',
+'"t[]',
+'!t/unimi/dsi/fastutil/longs/LongIterator.next',
+' java.lang.Integer',
+'*Long',
+'*Object[]',
+'*String',
+'0Builder',
+'0Latin1$CharsSpliterator',
+'0UTF16$CharsSpliterator',
+'0[]',
+'%nio.HeapCharBuffer',
+'%text.DecimalFormatSymbols',
+'%util.ArrayList',
+'*Formatter',
+'3$FixedString',
+'5ormatSpecifier',
+'*HashMap',
+'1$EntryIterator',
+'7Set',
+'2KeyIterator',
+'2Node',
+'6[]',
+'*OptionalInt',
+'*stream.FindOps$FindSink$OfInt',
+'1IntPipeline$10',
+'?$1',
+'=Head',
+'$/io/BufferedWriter.flushBuffer',
+'7write',
+'(OutputStreamWriter.write',
+'(PrintStream.println',
+'4writeln',
+'(Writer.write',
+'%lang/AbstractStringBuilder.<init>',
+'@append',
+'@ensureCapacityInternal',
+'*Double.toString',
+'*Integer.valueOf',
+'*Long.toString',
+'/valueOf',
+'*String.<init>',
+'1chars',
+'1format',
+'1valueOf',
+'0Builder.<init>',
+'8append',
+'8toString',
+'0Latin1.newString',
+'0UTF16$CharsSpliterator.tryAdvance',
+'*invoke/DirectMethodHandle$Holder.invokeStatic',
+'KnewInvokeSpecial',
+'C.allocateInstance',
+'1Invokers$Holder.linkToTargetMethod',
+'1LambdaForm$DMH.0x00000008001e4c00.invokeStatic',
+'<MH.0x00000008001e5400.invoke',
+'Lfdc00.collector',
+'Mf000.invoke',
+'N800.invoke',
+'Nc00.invoke',
+'K200c00.invoke',
+'*reflect/Array.newArray',
+';Instance',
+'%nio/CharBuffer.wrap',
+'%text/DecimalFormatSymbols.<init>',
+'?findNonFormatChar',
+'?getInstance',
+'?initialize',
+'%util/AbstractCollection.addAll',
+'=retainAll',
+'=toString',
+'2Map.toString',
+'+rrayList.<init>',
+'4add',
+'4forEach',
+'4grow',
+'/s.copyOf',
+'7Range',
+'1toString',
+'*Formatter$FixedString.print',
+'5ormatSpecifier.appendJustified',
+'DgetZero',
+'DlocalizedMagnitude',
+'Dprint',
+'IInteger',
+'IString',
+'3.<init>',
+'4format',
+'4parse',
+'4toString',
+'4zero',
+'*HashMap$EntrySet.iterator',
+'2KeySet.iterator',
+'1.entrySet',
+'2newNode',
+'2put',
+'5Val',
+'2resize',
+'.Set.<init>',
+'2add',
+'2iterator',
+'*Objects.toString',
+'+ptionalInt.of',
+'*stream/AbstractPipeline.copyInto',
+'JWithCancel',
+'Bevaluate',
+'JToArrayNode',
+'BwrapAndCopyInto',
+'FSink',
+'1FindOps$FindOp.evaluateSequential',
+'=Sink$OfInt$$Lambda$10.0x000000080008f560.get',
+'G.accept',
+'Hget',
+'1IntPipeline$10$1.accept',
+'?.opWrapSink',
+'<.filter',
+'?ndFirst',
+'>orEachWithCancel',
+'1Nodes$ArrayNode.<init>',
+'7FixedNodeBuilder.<init>',
+'6.builder',
+'1ReferencePipeline$$Lambda$132.0x0000000800170410.apply',
+'B.lambda$toArray$0',
+'CmakeNodeBuilder',
+'CtoArray',
+'EList',
+'1StreamSupport.intStream',
+'!dk/internal/math/FloatingDecimal$BinaryToASCIIBuffer.appendTo',
+'VtoJavaFormatString',
+'A.appendTo',
+'BtoJavaFormatString',
+'!mh/TestUtils.generateVector',
+'$read/Prepare.generateVector',
+')ReadLoadTest.main',
+' ldr.client.domen.DistancedEmbedding',
+'1Embedding',
+'$server.serialization.my.DataEncoder$DecodeResult',
+'<StringMapEncoder$$Lambda$135.0x00000008001f9598',
+'<base.VarIntEncoder$IntDecodeResult',
+'#/client/domen/DistancedEmbedding.toString',
+'1Embedding.toString',
+'1VectorCollectionResult.toString',
+'1collection/VectorCollection$$Lambda$137.0x00000008001fa2f8.accept',
+'L.lambda$query$1',
+'Mquery',
+'$server/serialization/my/EmbeddingEncoder.decode',
+'<StringEncoder.decode',
+'BMapEncoder$$Lambda$135.0x00000008001f9598.get',
+'L.decode',
+'Mlambda$decode$1',
+'<VectorEncoder.decode',
+'<base/VarIntEncoder.decode',
+'OwithCheck',
+',torage/StorageManager.get',
+'3drive/HardDriveEmbeddings.get',
+'MreadEmbedding',
+'3index/FastIndex.getBuckets',
+'FNearest',
+' sun/nio/cs/StreamEncoder.implWrite',
+'9write',
+'$util/locale/provider/DecimalFormatSymbolsProviderImpl.getInstance'
+];
+unpack(cpool);
+
+n(3,430355)
+u(1097)
+u(281,2147)
+u(289,4)
+u(257,2)
+u(273)
+u(1305)
+u(1297)
+u(537)
+u(122)
+f(297,4,2)
+u(265)
+u(257)
+u(273)
+u(1305)
+u(1297)
+u(537)
+u(122)
+f(385,3,2,2143)
+u(1161)
+u(457)
+u(497)
+u(433,410)
+u(377)
+u(729,306)
+u(729)
+u(665,190)
+u(401)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(697,11,190,116)
+u(713)
+u(697)
+u(673)
+u(401)
+u(401)
+u(313)
+u(401)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(745,9,116,104)
+u(409)
+u(417)
+u(649)
+u(10)
+f(481,7,104,2)
+u(473)
+u(465)
+u(529)
+u(114,1)
+n(521)
+u(114)
+f(489,7,1,1731)
+u(433)
+u(841)
+u(385)
+u(593)
+u(401,1615)
+u(313,25)
+u(321)
+u(641)
+u(10)
+f(385,13,25,1306)
+u(1145)
+u(457)
+u(513)
+u(433,423)
+u(377)
+u(146,2)
+n(721,6)
+u(90,1)
+n(393,5)
+u(305)
+u(10)
+f(729,19,5,323)
+u(729)
+u(665,207)
+u(401)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(697,21,207,102)
+u(713)
+u(697)
+u(673)
+u(401)
+u(401)
+u(313)
+u(401)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(737,21,102,14)
+u(154,4)
+n(162,10)
+f(745,19,10,92)
+u(409)
+u(417)
+u(82,3)
+n(649,89)
+u(10)
+f(489,17,89,882)
+u(433)
+u(841)
+u(385)
+u(1153)
+u(74,2)
+n(353)
+u(66)
+f(377,22,2,510)
+u(146,1)
+n(721,2)
+u(90,1)
+n(393)
+u(305)
+u(10)
+f(729,23,1,407)
+u(729)
+u(665,212)
+u(401)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(697,25,212,169)
+u(705,39)
+u(697)
+u(345,2)
+u(345)
+u(82)
+f(673,28,2)
+u(401)
+u(401)
+u(313)
+u(313)
+u(321)
+u(641)
+u(10)
+f(689,28,2,35)
+u(681)
+u(753)
+u(561)
+u(1313)
+u(130,2)
+n(545,33)
+u(569)
+u(553)
+u(369,16)
+u(98,5)
+n(106,4)
+n(1041,7)
+u(250)
+f(953,36,7,8)
+u(234)
+f(961,36,8,9)
+u(873)
+u(905)
+u(889,5)
+u(857,1)
+u(865)
+u(969)
+u(425)
+u(937)
+u(921)
+u(337)
+u(58)
+f(897,40,1,4)
+u(945)
+u(242)
+f(913,39,4,2)
+u(226)
+f(929,39,2)
+u(929)
+u(849)
+u(218)
+f(713,26,2,130)
+u(601,34)
+u(393,4)
+u(305)
+u(10)
+f(401,28,4,18)
+u(313,5)
+u(321)
+u(641)
+u(10)
+f(401,29,5,13)
+u(313)
+u(321)
+u(641)
+u(10)
+f(409,28,13,7)
+u(417)
+u(82,1)
+n(649,6)
+u(10)
+f(761,28,6,2)
+u(178)
+f(777,28,2,3)
+u(186)
+f(697,27,3,96)
+u(673)
+u(401)
+u(401)
+u(313)
+u(401)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(737,25,96,26)
+u(154,15)
+n(162,10)
+n(617,1)
+u(617)
+u(633)
+u(633)
+u(74)
+f(745,23,1,100)
+u(409)
+u(417)
+u(82,1)
+n(649,99)
+u(10)
+f(657,22,99,368)
+u(393,3)
+u(305)
+u(10)
+f(401,23,3,269)
+u(313)
+u(321,34)
+u(641)
+u(10)
+f(1065,25,34,235)
+u(1049)
+u(401)
+u(313)
+u(321)
+u(641)
+u(10)
+f(409,23,235,96)
+u(417)
+u(82,1)
+n(649,95)
+u(10)
+f(505,17,95,1)
+u(433)
+u(329)
+u(1073)
+u(1057)
+u(82)
+f(401,13,1,284)
+u(313)
+u(321)
+u(641)
+u(10)
+f(409,12,284,116)
+u(417)
+u(649)
+u(10)
+f(1089,2,116,2)
+u(1081)
+u(18)
+f(1185,2,2,428206)
+u(138,1)
+n(625,207)
+u(1169)
+u(1177)
+u(1106)
+f(1033,3,207,29)
+u(1025)
+u(1025)
+u(881)
+u(873)
+u(1017)
+u(993)
+u(985)
+u(977)
+u(1001)
+u(1009)
+u(74)
+f(1257,3,29,413137)
+u(609,39)
+u(74)
+f(1257,4,39,413098)
+u(1265)
+u(1273)
+u(1193)
+u(1114,4788)
+n(1217,288273)
+u(457,2221)
+u(441)
+u(449)
+u(1130)
+f(1217,9,2221,282427)
+u(170,6737)
+n(793,60403)
+u(801)
+u(785,48709)
+u(202)
+f(809,12,48709,11694)
+u(210)
+f(1122,10,11694,3489)
+n(1209,211798)
+u(1225)
+u(1201)
+u(10,69911)
+n(82,71509)
+n(361,70378)
+u(361)
+u(649)
+u(10)
+f(1241,9,70378,3625)
+u(1249)
+u(1138)
+f(1233,8,3625,120037)
+u(1233)
+u(18)
+f(1289,3,120037,14832)
+u(585,1)
+u(833)
+u(769)
+u(194)
+f(817,4,1,14830)
+u(577)
+u(49,6019)
+u(49)
+u(353)
+u(66)
+f(825,6,6019,8811)
+u(793)
+u(801)
+u(785,7915)
+u(202)
+f(809,9,7915,896)
+u(210)
+f(1281,4,896,1)
+u(33)
+u(25)
+u(42)
+
+search();
+</script></body></html>
