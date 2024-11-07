@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Map;
 
 import ldr.client.domen.Embedding;
+import ldr.server.serialization.my.base.VarLongEncoder;
 
 public class EmbeddingEncoder extends AbstractDataEncoder<Embedding> {
-    private static final DataEncoder<Long> longCoder = new VarLongEncoder();
+    private static final VarLongEncoder longCoder = new VarLongEncoder();
     private static final DataEncoder<double[]> vectorCoder = new VectorEncoder();
     private static final DataEncoder<Map<String, String>> metaCoder = new StringMapEncoder();
 
@@ -16,7 +17,7 @@ public class EmbeddingEncoder extends AbstractDataEncoder<Embedding> {
     public byte[] encode(Embedding data) {
         List<byte[]> bytesList = new ArrayList<>(1 + data.vector().length + data.metas().size() * 2);
         int sumBytesCount = 0;
-        sumBytesCount += putToList(bytesList, data.id(), longCoder);
+        sumBytesCount += longCoder.putToList(bytesList, data.id());
         sumBytesCount += putToList(bytesList, data.vector(), vectorCoder);
         sumBytesCount += putToList(bytesList, data.metas(), metaCoder);
 

@@ -1,0 +1,100 @@
+# JMH version: 1.36
+# VM version: JDK 17.0.2, OpenJDK 64-Bit Server VM, 17.0.2+8
+# VM invoker: /Users/lsaskov/.sdkman/candidates/java/17.0.2-tem/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 5 iterations, 10 s each
+# Measurement: 5 iterations, 10 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: jmh.read.ReadBenchmark.test
+
+# Run progress: 0,00% complete, ETA 00:08:20
+# Fork: 1 of 5
+# Warmup Iteration   1: 60,034 ms/op
+# Warmup Iteration   2: 58,966 ms/op
+# Warmup Iteration   3: 59,259 ms/op
+# Warmup Iteration   4: 59,039 ms/op
+# Warmup Iteration   5: 58,853 ms/op
+Iteration   1: 59,282 ms/op
+Iteration   2: 59,967 ms/op
+Iteration   3: 59,006 ms/op
+Iteration   4: 61,159 ms/op
+Iteration   5: 60,621 ms/op
+
+# Run progress: 20,00% complete, ETA 00:06:44
+# Fork: 2 of 5
+# Warmup Iteration   1: 67,829 ms/op
+# Warmup Iteration   2: 66,496 ms/op
+# Warmup Iteration   3: 69,024 ms/op
+# Warmup Iteration   4: 66,340 ms/op
+# Warmup Iteration   5: 66,417 ms/op
+Iteration   1: 68,171 ms/op
+Iteration   2: 65,809 ms/op
+Iteration   3: 65,293 ms/op
+Iteration   4: 65,353 ms/op
+Iteration   5: 65,358 ms/op
+
+# Run progress: 40,00% complete, ETA 00:05:03
+# Fork: 3 of 5
+# Warmup Iteration   1: 61,347 ms/op
+# Warmup Iteration   2: 60,053 ms/op
+# Warmup Iteration   3: 60,132 ms/op
+# Warmup Iteration   4: 59,932 ms/op
+# Warmup Iteration   5: 59,990 ms/op
+Iteration   1: 60,045 ms/op
+Iteration   2: 60,288 ms/op
+Iteration   3: 59,940 ms/op
+Iteration   4: 60,328 ms/op
+Iteration   5: 59,825 ms/op
+
+# Run progress: 60,00% complete, ETA 00:03:22
+# Fork: 4 of 5
+# Warmup Iteration   1: 59,928 ms/op
+# Warmup Iteration   2: 58,844 ms/op
+# Warmup Iteration   3: 58,705 ms/op
+# Warmup Iteration   4: 58,571 ms/op
+# Warmup Iteration   5: 58,353 ms/op
+Iteration   1: 58,288 ms/op
+Iteration   2: 60,512 ms/op
+Iteration   3: 57,614 ms/op
+Iteration   4: 57,539 ms/op
+Iteration   5: 57,962 ms/op
+
+# Run progress: 80,00% complete, ETA 00:01:41
+# Fork: 5 of 5
+# Warmup Iteration   1: 66,965 ms/op
+# Warmup Iteration   2: 65,429 ms/op
+# Warmup Iteration   3: 65,123 ms/op
+# Warmup Iteration   4: 67,866 ms/op
+# Warmup Iteration   5: 67,684 ms/op
+Iteration   1: 68,158 ms/op
+Iteration   2: 66,631 ms/op
+Iteration   3: 65,952 ms/op
+Iteration   4: 65,832 ms/op
+Iteration   5: 66,201 ms/op
+
+
+Result "jmh.read.ReadBenchmark.test":
+  62,205 ±(99.9%) 2,672 ms/op [Average]
+  (min, avg, max) = (57,539, 62,205, 68,171), stdev = 3,566
+  CI (99.9%): [59,534, 64,877] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:08:25
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark           Mode  Cnt   Score   Error  Units
+ReadBenchmark.test  avgt   25  62,205 ± 2,672  ms/op
